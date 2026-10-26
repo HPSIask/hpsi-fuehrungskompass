@@ -244,6 +244,29 @@
   .frow h3 { font-size: 22px; }
   .rates { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
   .circles { display: flex; gap: 3px; max-width: 560px; }
+  .sl { display: flex; align-items: center; gap: 16px; }
+  .range { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 52px; background: transparent; margin: 0; touch-action: pan-y; cursor: pointer; }
+  .range::-webkit-slider-runnable-track { height: 8px; background: linear-gradient(to right, var(--fg) var(--p, 0%), var(--line2) var(--p, 0%)); }
+  .range::-moz-range-track { height: 8px; background: linear-gradient(to right, var(--fg) var(--p, 0%), var(--line2) var(--p, 0%)); }
+  .range::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 46px; background: var(--fg); border: 3px solid var(--fg); border-radius: 0; margin-top: -19px; transform: skewX(-12deg); }
+  .range::-moz-range-thumb { width: 22px; height: 40px; background: var(--fg); border: 3px solid var(--fg); border-radius: 0; }
+  .range.unset::-webkit-slider-thumb { background: var(--bg); }
+  .range.unset::-moz-range-thumb { background: var(--bg); }
+  .range.off { opacity: 0.35; }
+  .val { font-family: var(--head); font-style: italic; font-weight: 900; font-size: 36px; min-width: 2.2ch; text-align: right; line-height: 1; }
+  .valrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .valrow .pill { font-size: 16px; padding: 6px 14px; }
+  .valrow .pill.core { background: var(--fg); color: var(--bg); }
+  details.fold { border-top: 1px solid var(--line2); padding-top: 4px; }
+  details.fold > summary { cursor: pointer; font-family: var(--head); font-style: italic; font-weight: 900; text-transform: uppercase; font-size: 22px; min-height: 52px; display: flex; align-items: center; }
+  details.fold[open] > summary { margin-bottom: 12px; }
+  .dlnav .btn { flex: 1 1 220px; text-align: center; }
+  @media (max-width: 640px) {
+    .nav:has(#next) { position: sticky; bottom: 0; z-index: 5; background: var(--bg); padding: 12px 0 calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); flex-wrap: nowrap; margin-top: 8px; }
+    .nav:has(#next) .btn { flex: 1 1 0; padding: 12px 8px; font-size: 18px; }
+    .nav:has(#next) .btn.ghost { flex: 0 0 auto; padding: 12px 18px; }
+    .dlnav .btn { flex-basis: 100%; }
+  }
   .rate {
     appearance: none; flex: 1 1 0; min-width: 0; height: 44px; border-radius: 0; border: 2px solid var(--fg); background: transparent; color: var(--fg); cursor: pointer;
     font-family: var(--head); font-weight: 700; font-size: 16px; padding: 0;
@@ -347,7 +370,7 @@
   function score(k) { var s = state.fields && state.fields[k]; return typeof s === "number" ? s : null; }
   function isRated(k) { var s = score(k); return s !== null && s >= 0; }
   function ratedCount() { return FIELDS.filter(function (f) { return isRated(f.k); }).length; }
-  var STEPS = ["Werte", "Kernwert", "Felder", "Fragen", "Kompass"];
+  var STEPS = ["Werte", "Kernwert", "Strategie", "Impuls", "Kompass"];
   var MIN = 3, MAX = 6;
   var KEY = "hpsi-fuehrungskompass-v3";
   var state = { step: 0, name: "", picks: [], core: "", coreText: "", fields: {}, a1: "", a2: "", a3: "" };
@@ -413,10 +436,10 @@
       '<p class="lead">Bevor du andere führst, lohnt der Blick auf das, was dich selbst trägt. Du wählst deine Werte, bestimmst deinen Kern, prüfst ihn an deinem Berufsalltag und bekommst Ableitungen für deinen Führungsstil.</p>' +
       '<ol class="ablauf">' +
       "<li><b>Werte</b><span>Wähle drei bis sechs Werte. Weniger ist schärfer.</span></li>" +
-      "<li><b>Kernwert</b><span>Welcher davon ist dein Kern? Ca. 5 Minuten für beides.</span></li>" +
-      "<li><b>Felder</b><span>In welchen der sechs HPSI Strategiefelder lebst du deine Werte am meisten aus?</span></li>" +
-      "<li><b>Fragen</b><span>Drei Fragen zu deinem Arbeitsalltag. Ca. 5 Minuten.</span></li>" +
-      "<li><b>Kompass</b><span>Dein Führungsprofil mit Nadel. Danach Austausch mit deiner Sitznachbar:in.</span></li>" +
+      "<li><b>Kernwert</b><span>Welchem Wert würdest du die größte persönliche Bedeutung zuschreiben?</span></li>" +
+      "<li><b>Strategie</b><span>In welchen der sechs HPSI Strategiefelder lebst du deine Werte am meisten aus?</span></li>" +
+      "<li><b>Impuls</b><span>Ein Satz, den du mitnimmst.</span></li>" +
+      "<li><b>Kompass</b><span>Dein persönlicher Führungskompass zur Selbstreflexion</span></li>" +
       "</ol>" +
       '<label class="field" for="name">Dein Vorname <small>Optional, erscheint nur auf deinem Kompass.</small>' +
       '<input type="text" id="name" autocomplete="given-name" maxlength="30" placeholder="z. B. Alex" value="' + esc(state.name) + '"></label>' +
@@ -476,8 +499,8 @@
       "<h2>Welcher Wert ist dein Kern?</h2>" +
       '<p class="lead">Wenn du nur einen behalten dürftest, welcher wäre es? Das ist dein Kernwert.</p>' +
       '<div class="core-list" id="coreList">' + opts + "</div>" +
-      '<label class="field" for="coreText">Was bedeutet dieser Wert für dich? <small>Ein bis zwei Sätze in deinen Worten.</small>' +
-      '<textarea id="coreText" placeholder="Für mich heißt das …">' + esc(state.coreText) + "</textarea></label>" +
+      '<label class="field" for="coreText">Was bedeutet dein Kernwert für dich, und woher kommt er? <small>Ein Satz in deinen Worten. Er kommt auf dein Poster.</small>' +
+      '<textarea id="coreText" maxlength="200" placeholder="Für mich heißt das …">' + esc(state.coreText) + "</textarea></label>" +
       '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Weiter</span></button></div>' +
       "</div></div>";
     document.getElementById("coreList").addEventListener("click", function (e) {
@@ -499,25 +522,28 @@
   // ---- Schritt 3: Die sechs HPSI Strategiefelder, Skala 0 bis 10 ----
   function viewFields() {
     var rows = FIELDS.map(function (f) {
-      var circles = "";
-      for (var i = 0; i <= 10; i++) circles += '<button type="button" class="rate" data-f="' + f.k + '" data-s="' + i + '" aria-label="' + esc(f.name) + ', ' + i + ' von 10">' + i + "</button>";
       return '<div class="frow" data-row="' + f.k + '"><div class="stack-xs"><h3>' + esc(f.name) + '</h3><p class="mute">' + esc(f.desc) + "</p></div>" +
-        '<div class="circles" role="group" aria-label="' + esc(f.name) + '">' + circles + "</div>" +
+        '<div class="sl"><input type="range" class="range unset" min="0" max="10" step="1" value="0" data-f="' + f.k + '" aria-label="' + esc(f.name) + ', 0 bis 10"><output class="val" data-v="' + f.k + '">–</output></div>' +
         '<div class="rates"><span class="ends">0 gar nicht, 10 voll und ganz</span><button type="button" class="skip" data-f="' + f.k + '" data-s="-1">Kein Einfluss</button></div></div>';
     }).join("");
     app.innerHTML =
       '<div class="step-in">' + progress() + '<div class="stack">' +
       "<h2>Wo lebst du deine Werte?</h2>" + pillsHTML() +
-      '<p class="lead">Deine Werte geben die Richtung vor. In welchem der sechs HPSI Strategiefelder kannst du sie aktuell am meisten ausleben?</p>' +
-      '<p class="hint">Bewerte jedes Feld von 0 bis 10. Wo du in deiner Arbeit keinen Einfluss hast, wähle „Kein Einfluss“. Mindestens zwei Felder brauchst du, damit dein Kompass eine Richtung bekommt.</p>' +
+      '<p class="lead">In welchem der sechs HPSI Strategiefelder kannst du deine Werte aktuell am meisten ausleben?</p>' +
+      '<p class="hint">Schieb den Regler von 0 bis 10. Wo du keinen Einfluss hast, tippe auf „Kein Einfluss“. Mindestens zwei Felder, damit dein Kompass eine Richtung bekommt.</p>' +
       '<div class="frows" id="frows">' + rows + "</div>" +
       '<p class="msg" id="fmsg" aria-live="polite"></p>' +
       '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Weiter</span></button></div>' +
       "</div></div>";
-    document.getElementById("frows").addEventListener("click", function (e) {
-      var b = e.target.closest(".rate, .skip"); if (!b) return;
-      var k = b.getAttribute("data-f"), s = parseInt(b.getAttribute("data-s"), 10);
-      if (state.fields[k] === s) delete state.fields[k]; else state.fields[k] = s;
+    var box = document.getElementById("frows");
+    function setRange(el) { state.fields[el.getAttribute("data-f")] = parseInt(el.value, 10); save(); paintFields(); }
+    ["input", "change", "pointerup", "touchend", "keyup"].forEach(function (ev) {
+      box.addEventListener(ev, function (e) { var el = e.target.closest(".range"); if (el) setRange(el); });
+    });
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest(".skip"); if (!b) return;
+      var k = b.getAttribute("data-f");
+      if (state.fields[k] === -1) delete state.fields[k]; else state.fields[k] = -1;
       save(); paintFields();
     });
     document.getElementById("back").addEventListener("click", function () { go(2); });
@@ -527,36 +553,30 @@
   function paintFields() {
     FIELDS.forEach(function (f) {
       var s = score(f.k), row = document.querySelector('[data-row="' + f.k + '"]');
-      Array.prototype.forEach.call(row.querySelectorAll(".rate"), function (b) {
-        var v = parseInt(b.getAttribute("data-s"), 10);
-        b.classList.toggle("on", isRated(f.k) && (v === 0 ? s === 0 : v <= s));
-        b.setAttribute("aria-pressed", s === v ? "true" : "false");
-      });
-      var sk = row.querySelector(".skip");
+      var r = row.querySelector(".range"), o = row.querySelector(".val"), sk = row.querySelector(".skip");
+      r.classList.toggle("unset", !isRated(f.k));
+      r.classList.toggle("off", s === -1);
+      if (isRated(f.k)) r.value = String(s);
+      r.style.setProperty("--p", (isRated(f.k) ? s * 10 : 0) + "%");
+      o.textContent = isRated(f.k) ? String(s) : "–";
       sk.classList.toggle("on", s === -1); sk.setAttribute("aria-pressed", s === -1 ? "true" : "false");
     });
     var n = ratedCount();
     document.getElementById("fmsg").textContent = n >= 2 ? "" : "Bewerte mindestens zwei Felder, damit dein Kompass eine Richtung bekommt.";
     document.getElementById("next").disabled = n < 2;
   }
-
-  // ---- Schritt 4: Fragen ----
   function pillsHTML() {
     return '<div class="pills">' + state.picks.map(function (p) { return '<span class="pill' + (p === state.core ? " core" : "") + '">' + esc(p) + "</span>"; }).join("") + "</div>";
   }
   function viewQuestions() {
     app.innerHTML =
       '<div class="step-in">' + progress() + '<div class="stack">' +
-      "<h2>Dein Alltag in drei Fragen</h2>" + pillsHTML() +
-      '<p class="lead">Denk an eine ganz normale Arbeitswoche. Je konkreter du wirst, desto mehr nimmst du mit.</p>' +
-      '<label class="field" for="a1">1. In welchen Situationen deines Arbeitsalltags zeigen sich diese Werte? <small>Zum Beispiel in Entscheidungen, Gesprächen, Meetings oder Verhandlungen.</small><textarea id="a1" placeholder="Letzte Woche, als …">' + esc(state.a1) + "</textarea></label>" +
-      '<label class="field" for="a2">2. Woran würden dein Team oder deine Kolleg:innen merken, dass du nach diesen Werten führst? <small>Nenne zwei bis drei konkrete Beispiele.</small><textarea id="a2" placeholder="Sie würden sehen, dass …">' + esc(state.a2) + "</textarea></label>" +
-      '<label class="field" for="a3">3. Was nimmst du dir vor, damit diese Werte in deinem Arbeitsalltag noch stärker gelebt werden? <small>Eine Sache, die du ab Montag anders machst.</small><textarea id="a3" placeholder="Ab Montag …">' + esc(state.a3) + "</textarea></label>" +
+      "<h2>Dein Impuls</h2>" + pillsHTML() +
+      '<p class="lead">Ein Satz reicht. Er kommt auf dein Poster.</p>' +
+      '<label class="field" for="a3">Was nimmst du aus dieser Session für deinen Arbeitsalltag mit? <small>Zum Beispiel etwas, das du beibehalten oder ausprobieren möchtest. Optional.</small><textarea id="a3" maxlength="200" placeholder="Ich möchte …">' + esc(state.a3) + "</textarea></label>" +
       '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Kompass erstellen</span></button></div>' +
       "</div></div>";
-    ["a1", "a2", "a3"].forEach(function (id) {
-      document.getElementById(id).addEventListener("input", function (e) { state[id] = e.target.value; save(); });
-    });
+    document.getElementById("a3").addEventListener("input", function (e) { state.a3 = e.target.value; save(); });
     document.getElementById("back").addEventListener("click", function () { go(3); });
     document.getElementById("next").addEventListener("click", function () { go(5); });
   }
@@ -714,9 +734,9 @@
       var LH = 14 * u * 168.66 / 444.12, hdrH = 13.4 * u - 1.6 * u + LH;
       // Abschnitt 3: Satz zum Kernwert
       var sumFont = F("italic", 700, 2.9 * u, HEADF); ctx.font = sumFont;
-      var sumLines = wrapLines(ctx, "Du führst vor allem über " + c.name + ". " + c.bed, iw), sumLH = 2.9 * u * 1.15, sumH = sumLines.length * sumLH;
+      var sumLines = wrapLines(ctx, posterSum(c), iw), sumLH = 2.9 * u * 1.15, sumH = sumLines.length * sumLH;
       // Abschnitt 4: Kernwert und weitere Werte
-      var items = [{ t: "Deine Stärke", x: c.st }, { t: "Deine Stolperfalle", x: c.fall }].concat(others.map(function (o) { return { t: BY[o].name, x: BY[o].bed }; }));
+      var items = posterItems(c, others);
       var cells = items.map(function (it) {
         ctx.font = F("italic", 900, 2.2 * u, HEADF);
         var nameLines = wrapLines(ctx, it.t.toUpperCase(), colW), nameH = nameLines.length * 2.2 * u * 1.05;
@@ -730,7 +750,7 @@
       var gridH = rowH.reduce(function (a, b) { return a + b; }, 0) + (nRows - 1) * 2.2 * u;
       // Abschnitt 5: Fuß
       var w1 = (iw - 4 * u) * 1.1 / 2.1, w2 = (iw - 4 * u) / 2.1;
-      var footK = state.a3.trim() ? "Mein Vorsatz" : "Frage für Montag", footT = state.a3.trim() ? state.a3.trim() : c.frage;
+      var footK = state.a3.trim() ? "Mein Impuls" : "Frage für Montag", footT = state.a3.trim() ? state.a3.trim() : c.frage;
       ctx.font = F("normal", 400, 2.2 * u, BODYF);
       var fl = wrapLines(ctx, footT, w1);
       if (fl.length > 5) { fl = fl.slice(0, 5); fl[4] = fl[4].replace(/\s*\S*$/, "") + " …"; }
@@ -841,6 +861,12 @@
       st.textContent = err && err.code === "declined" ? "Abgebrochen." : "Speichern hat nicht geklappt. Mach stattdessen einen Screenshot.";
     });
   }
+  function ownDef() { return state.coreText.trim(); }
+  function posterSum(c) { return ownDef() ? "Für mich heißt " + c.name + ": " + ownDef() : "Du führst vor allem über " + c.name + ". " + c.bed; }
+  function posterItems(c, others) {
+    var first = ownDef() ? [{ t: "Das heißt für dein Führen", x: c.bed }] : [];
+    return first.concat([{ t: "Deine Stärke", x: c.st }, { t: "Deine Stolperfalle", x: c.fall }]).concat(others.map(function (o) { return { t: BY[o].name, x: BY[o].bed }; }));
+  }
   function summaryText() {
     var c = BY[state.core], others = state.picks.filter(function (p) { return p !== state.core; });
     return "Du führst vor allem über " + c.name + ". " + c.bed + (others.length ? " Getragen wird das von " + join(others) + "." : "");
@@ -857,51 +883,48 @@
     return h + '<b class="snum">' + s + "</b></span>";
   }
   function posterHTML(c, others, ex) {
-    var items = [{ t: "Deine Stärke", x: c.st }, { t: "Deine Stolperfalle", x: c.fall }].concat(others.map(function (o) { return { t: BY[o].name, x: BY[o].bed }; }));
+    var items = posterItems(c, others);
     var cells = items.map(function (it) { return '<div class="pcell"><strong>' + esc(it.t) + "</strong><p>" + esc(it.x) + "</p></div>"; }).join("");
     var foot = state.a3.trim()
-      ? '<p class="pfoot-k">Mein Vorsatz</p><p class="pfoot-t">' + esc(state.a3.trim()) + "</p>"
+      ? '<p class="pfoot-k">Mein Impuls</p><p class="pfoot-t">' + esc(state.a3.trim()) + "</p>"
       : '<p class="pfoot-k">Frage für Montag</p><p class="pfoot-t">' + esc(c.frage) + "</p>";
     return '<div class="sheet"><div class="poster">' +
       '<header class="phd"><img class="plogo" src="' + LOGO_POS + '" alt="HPSI"><div class="prow"><p class="peyebrow">HPSI · Sportgeist 2026</p>' +
       (state.name.trim() ? '<p class="pname">von ' + esc(state.name.trim()) + "</p>" : "") + '</div><h2 class="ptitle">Führungs&shy;kompass</h2></header>' +
       compassSVG(state.core, others, ex) +
-      '<p class="psum">' + esc("Du führst vor allem über " + c.name + ". " + c.bed) + "</p>" +
+      '<p class="psum">' + esc(posterSum(c)) + "</p>" +
       '<div class="pgrid">' + cells + "</div>" +
       '<footer class="pfoot"><div>' + foot + '</div><blockquote class="pq"><p>„Nur wer sich selbst kennt, kann andere führen.“</p><cite>Bernhard Peters</cite></blockquote></footer>' +
       "</div></div>";
   }
   function viewResult() {
     var c = BY[state.core], others = state.picks.filter(function (p) { return p !== state.core; }), ex = extremes();
-
-    var coreCard = '<article class="vcard core"><span class="tag">Kernwert</span><h3>' + esc(c.name) + "</h3>" +
-      (state.coreText.trim() ? '<p class="own">Für mich heißt das: ' + esc(state.coreText.trim()) + "</p>" : "") +
-      '<dl class="core-grid"><div><dt>Das heißt für dein Führen</dt><dd>' + esc(c.bed) + "</dd></div><div><dt>Deine Stärke</dt><dd>" + esc(c.st) +
-      "</dd></div><div><dt>Deine Stolperfalle</dt><dd>" + esc(c.fall) + "</dd></div><div><dt>Frage für Montag</dt><dd>" + esc(c.frage) + "</dd></div></dl></article>";
-    var cards = others.map(function (p) {
-      var v = BY[p];
-      return '<article class="vcard"><span class="tag">Wert</span><h3>' + esc(v.name) + "</h3><dl><div><dt>Das heißt für dein Führen</dt><dd>" + esc(v.bed) +
-        "</dd></div><div><dt>Deine Stärke</dt><dd>" + esc(v.st) + "</dd></div><div><dt>Deine Stolperfalle</dt><dd>" + esc(v.fall) +
-        "</dd></div><div><dt>Frage für Montag</dt><dd>" + esc(v.frage) + "</dd></div></dl></article>";
-    }).join("");
-
+    function card(v, core) {
+      return '<article class="vcard' + (core ? " core" : "") + '"><span class="tag">' + (core ? "Kernwert" : "Wert") + "</span><h3>" + esc(v.name) + "</h3>" +
+        '<dl class="' + (core ? "core-grid" : "") + '"><div><dt>Das heißt für dein Führen</dt><dd>' + esc(v.bed) + "</dd></div><div><dt>Deine Stärke</dt><dd>" + esc(v.st) +
+        "</dd></div><div><dt>Deine Stolperfalle</dt><dd>" + esc(v.fall) + "</dd></div><div><dt>Frage für Montag</dt><dd>" + esc(v.frage) + "</dd></div></dl></article>";
+    }
+    var cards = card(c, true) + others.map(function (p) { return card(BY[p], false); }).join("");
     var q2 = ex && ex.hi ? "Wo liegt dein Kraftfeld und wo dein größter Spielraum? Und wie sieht das bei deinem Gegenüber aus?" : "In welchem Feld lebst du deine Werte am stärksten und in welchem am wenigsten? Und bei deinem Gegenüber?";
+    var vals = '<div class="valrow"><span class="pill core">' + esc(c.name) + "</span>" + others.map(function (o) { return '<span class="pill">' + esc(o) + "</span>"; }).join("") + "</div>";
+    var wide = window.innerWidth >= 760;
 
     app.innerHTML =
       '<div class="step-in">' + progress() + '<div class="stack">' +
-      '<p class="lead">Dein Poster ist fertig. Speichere es als PDF oder Bild, oder mach einen Screenshot.</p>' +
-      posterHTML(c, others, ex) +
-      '<div class="nav" id="dl" hidden><button class="btn" id="dlpdf"><span>Als PDF speichern</span></button><button class="btn" id="dlpng"><span>Als Bild speichern</span></button></div>' +
-      '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="copy"><span>Text kopieren</span></button><button class="btn ghost" id="again"><span>Neu starten</span></button></div>' +
-      '<p class="status" id="status" aria-live="polite"></p>' +
-      '<section class="panel"><h3>Für das Gespräch mit deiner Sitznachbar:in</h3><ol>' +
+      "<h2>Dein Führungskompass</h2>" +
+      '<p class="lead">' + esc(summaryText()) + "</p>" +
+      compassSVG(state.core, others, ex) + vals +
+      (ex ? '<p class="needle-text">' + esc(needleText(ex)) + "</p>" : "") +
+      '<section class="panel"><h3>Jetzt: Austausch mit deiner Sitznachbar:in</h3><ol>' +
       "<li>Wo erlebt man " + esc(c.name) + " bei dir im Arbeitsalltag, und wo fehlt es noch?</li>" +
       "<li>" + esc(q2) + "</li>" +
       "<li>Wie würde " + esc(c.name) + " in deiner Sportart oder Organisation anders aussehen als bei deinem Gegenüber?</li></ol>" +
-      '<p class="hint">Tauscht euch zu zweit aus und stellt euch gegenseitig euren Kompass vor. Mehr braucht es nicht.</p></section>' +
-      '<div class="stack"><h3>Was das für dein Führen heißt</h3>' +
-      (ex ? '<p class="needle-text">' + esc(needleText(ex)) + "</p>" : "") +
-      '<div class="cards">' + coreCard + cards + "</div></div>" +
+      '<p class="hint">Stellt euch gegenseitig euren Kompass vor. Mehr braucht es nicht.</p></section>' +
+      '<div class="nav dlnav" id="dl" hidden><button class="btn" id="dlpdf"><span>Poster als PDF</span></button><button class="btn" id="dlpng"><span>Poster als Bild</span></button></div>' +
+      '<p class="status" id="status" aria-live="polite"></p>' +
+      '<details class="fold"' + (wide ? " open" : "") + "><summary>Dein Poster ansehen</summary>" + posterHTML(c, others, ex) + "</details>" +
+      '<details class="fold"' + (wide ? " open" : "") + "><summary>Was das für dein Führen heißt</summary>" + '<div class="cards">' + cards + "</div></details>" +
+      '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn ghost" id="copy"><span>Text kopieren</span></button><button class="btn ghost" id="again"><span>Neu starten</span></button></div>' +
       "</div></div>";
     document.getElementById("back").addEventListener("click", function () { go(4); });
     document.getElementById("again").addEventListener("click", reset);
@@ -921,7 +944,7 @@
     t += "Frage für Montag (" + c.name + "): " + c.frage + "\n";
     if (state.a1.trim()) t += "\nSituationen im Alltag: " + state.a1.trim();
     if (state.a2.trim()) t += "\nDas merkt mein Team: " + state.a2.trim();
-    if (state.a3.trim()) t += "\nMein Vorsatz: " + state.a3.trim();
+    if (state.a3.trim()) t += "\nMein Impuls: " + state.a3.trim();
     return t;
   }
   function copyText() {
