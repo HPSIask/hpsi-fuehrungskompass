@@ -233,7 +233,7 @@
   .poster .snum { font-size: 1.9cqw; margin-left: 0.9cqw; }
   .pfoot { display: grid; grid-template-columns: 1.1fr 1fr; gap: 4cqw; border-top: 0.5cqw solid var(--fg); padding-top: 2cqw; }
   .pfoot-k { font-family: var(--head); font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; font-size: 1.9cqw; color: var(--mute); }
-  .pfoot-t { font-size: 2.2cqw; line-height: 1.25; margin-top: 0.4cqw !important; }
+  .pfoot-t { font-size: 2.2cqw; line-height: 1.25; margin-top: 0.4cqw !important; margin-bottom: 1.4cqw; }
   .pq p { font-family: var(--head); font-style: italic; font-weight: 700; font-size: 2.6cqw; line-height: 1.1; }
   .pq cite { display: block; margin-top: 1cqw; font-style: normal; font-family: var(--head); font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; font-size: 1.8cqw; color: var(--mute); }
 
@@ -438,7 +438,7 @@
       "<li><b>Werte</b><span>Wähle drei bis sechs Werte. Weniger ist schärfer.</span></li>" +
       "<li><b>Kernwert</b><span>Welchem Wert würdest du die größte persönliche Bedeutung zuschreiben?</span></li>" +
       "<li><b>Strategie</b><span>In welchen der sechs HPSI Strategiefelder lebst du deine Werte am meisten aus?</span></li>" +
-      "<li><b>Impuls</b><span>Ein Satz, den du mitnimmst.</span></li>" +
+      "<li><b>Impuls</b><span>Zwei kurze Sätze, die du mitnimmst.</span></li>" +
       "<li><b>Kompass</b><span>Dein persönlicher Führungskompass zur Selbstreflexion</span></li>" +
       "</ol>" +
       '<label class="field" for="name">Dein Vorname <small>Optional, erscheint nur auf deinem Kompass.</small>' +
@@ -568,15 +568,24 @@
   function pillsHTML() {
     return '<div class="pills">' + state.picks.map(function (p) { return '<span class="pill' + (p === state.core ? " core" : "") + '">' + esc(p) + "</span>"; }).join("") + "</div>";
   }
+  function footBlocks(c) {
+    var b = [];
+    if (state.a1.trim()) b.push({ k: "Das erleben meine Kolleg:innen", t: state.a1.trim() });
+    if (state.a2.trim()) b.push({ k: "Das will ich stärken", t: state.a2.trim() });
+    if (!b.length) b.push({ k: "Frage für Montag", t: c.frage });
+    return b;
+  }
   function viewQuestions() {
     app.innerHTML =
       '<div class="step-in">' + progress() + '<div class="stack">' +
       "<h2>Dein Impuls</h2>" + pillsHTML() +
-      '<p class="lead">Ein Satz reicht. Er kommt auf dein Poster.</p>' +
-      '<label class="field" for="a3">Was nimmst du aus dieser Session für deinen Arbeitsalltag mit? <small>Zum Beispiel etwas, das du beibehalten oder ausprobieren möchtest. Optional.</small><textarea id="a3" maxlength="200" placeholder="Ich möchte …">' + esc(state.a3) + "</textarea></label>" +
+      '<p class="lead">Zwei kurze Sätze reichen. Beides ist optional und kommt auf dein Poster.</p>' +
+      '<label class="field" for="a1">Meine Kolleg:innen würden eine Situation beschreiben, in der mein Kernwert ' + esc(state.core) + ' spürbar wird. <small>Zum Beispiel: Wenn …</small><textarea id="a1" maxlength="200" placeholder="Wenn …">' + esc(state.a1) + "</textarea></label>" +
+      '<label class="field" for="a2">Diese Stärken möchte ich auf Basis meiner Werte noch stärker zum Ausdruck bringen. <small>Ein, zwei Stichworte oder ein Satz.</small><textarea id="a2" maxlength="200" placeholder="Ich möchte …">' + esc(state.a2) + "</textarea></label>" +
       '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Kompass erstellen</span></button></div>' +
       "</div></div>";
-    document.getElementById("a3").addEventListener("input", function (e) { state.a3 = e.target.value; save(); });
+    document.getElementById("a1").addEventListener("input", function (e) { state.a1 = e.target.value; save(); });
+    document.getElementById("a2").addEventListener("input", function (e) { state.a2 = e.target.value; save(); });
     document.getElementById("back").addEventListener("click", function () { go(3); });
     document.getElementById("next").addEventListener("click", function () { go(5); });
   }
@@ -750,13 +759,15 @@
       var gridH = rowH.reduce(function (a, b) { return a + b; }, 0) + (nRows - 1) * 2.2 * u;
       // Abschnitt 5: Fuß
       var w1 = (iw - 4 * u) * 1.1 / 2.1, w2 = (iw - 4 * u) / 2.1;
-      var footK = state.a3.trim() ? "Mein Impuls" : "Frage für Montag", footT = state.a3.trim() ? state.a3.trim() : c.frage;
+      var fb = footBlocks(c), maxL = fb.length > 1 ? 3 : 5;
       ctx.font = F("normal", 400, 2.2 * u, BODYF);
-      var fl = wrapLines(ctx, footT, w1);
-      if (fl.length > 5) { fl = fl.slice(0, 5); fl[4] = fl[4].replace(/\s*\S*$/, "") + " …"; }
+      fb.forEach(function (b) {
+        b.l = wrapLines(ctx, b.t, w1);
+        if (b.l.length > maxL) { b.l = b.l.slice(0, maxL); b.l[maxL - 1] = b.l[maxL - 1].replace(/\s*\S*$/, "") + " …"; }
+      });
       ctx.font = F("italic", 700, 2.6 * u, HEADF);
       var ql = wrapLines(ctx, "„Nur wer sich selbst kennt, kann andere führen.“", w2);
-      var leftH = 1.9 * u * 1.2 + 0.4 * u + fl.length * 2.2 * u * 1.25, rightH = ql.length * 2.6 * u * 1.1 + 1 * u + 1.8 * u * 1.2;
+      var leftH = fb.reduce(function (a, b) { return a + 1.9 * u * 1.2 + 0.4 * u + b.l.length * 2.2 * u * 1.25; }, 0) + (fb.length - 1) * 1.4 * u, rightH = ql.length * 2.6 * u * 1.1 + 1 * u + 1.8 * u * 1.2;
       var footH = 0.5 * u + 2 * u + Math.max(leftH, rightH);
       // Abschnitt 2: Kompass nimmt den Platz, der übrig ist
       var gMin = 1.8 * u, kMax = 0.8 * iw / 840, availC = H - 2 * pad - hdrH - sumH - gridH - footH - 4 * gMin;
@@ -794,9 +805,13 @@
       y += gap;
       // Fuß
       ctx.fillStyle = INK; ctx.fillRect(pad, y, iw, 0.5 * u); var fy = y + 0.5 * u + 2 * u;
-      ctx.font = F("normal", 700, 1.9 * u, HEADF); ctx.fillStyle = MUTE; spaced(ctx, footK.toUpperCase(), pad, fy + 1.9 * u * 0.9, 0.14 * 1.9 * u, "left");
-      ctx.font = F("normal", 400, 2.2 * u, BODYF); ctx.fillStyle = INK; ctx.textAlign = "left";
-      fl.forEach(function (ln, i) { ctx.fillText(ln, pad, fy + 1.9 * u * 1.2 + 0.4 * u + 2.2 * u * 1.25 * i + 2.2 * u * 0.95); });
+      var fyy = fy;
+      fb.forEach(function (b) {
+        ctx.font = F("normal", 700, 1.9 * u, HEADF); ctx.fillStyle = MUTE; spaced(ctx, b.k.toUpperCase(), pad, fyy + 1.9 * u * 0.9, 0.14 * 1.9 * u, "left");
+        ctx.font = F("normal", 400, 2.2 * u, BODYF); ctx.fillStyle = INK; ctx.textAlign = "left";
+        b.l.forEach(function (ln, i) { ctx.fillText(ln, pad, fyy + 1.9 * u * 1.2 + 0.4 * u + 2.2 * u * 1.25 * i + 2.2 * u * 0.95); });
+        fyy += 1.9 * u * 1.2 + 0.4 * u + b.l.length * 2.2 * u * 1.25 + 1.4 * u;
+      });
       var qx = pad + w1 + 4 * u;
       ctx.font = F("italic", 700, 2.6 * u, HEADF); ctx.fillStyle = INK; ctx.textAlign = "left";
       ql.forEach(function (ln, i) { ctx.fillText(ln, qx, fy + 2.6 * u * 1.1 * i + 2.6 * u * 0.9); });
@@ -885,9 +900,7 @@
   function posterHTML(c, others, ex) {
     var items = posterItems(c, others);
     var cells = items.map(function (it) { return '<div class="pcell"><strong>' + esc(it.t) + "</strong><p>" + esc(it.x) + "</p></div>"; }).join("");
-    var foot = state.a3.trim()
-      ? '<p class="pfoot-k">Mein Impuls</p><p class="pfoot-t">' + esc(state.a3.trim()) + "</p>"
-      : '<p class="pfoot-k">Frage für Montag</p><p class="pfoot-t">' + esc(c.frage) + "</p>";
+    var foot = footBlocks(c).map(function (b) { return '<p class="pfoot-k">' + esc(b.k) + '</p><p class="pfoot-t">' + esc(b.t) + "</p>"; }).join("");
     return '<div class="sheet"><div class="poster">' +
       '<header class="phd"><img class="plogo" src="' + LOGO_POS + '" alt="HPSI"><div class="prow"><p class="peyebrow">HPSI · Sportgeist 2026</p>' +
       (state.name.trim() ? '<p class="pname">von ' + esc(state.name.trim()) + "</p>" : "") + '</div><h2 class="ptitle">Führungs&shy;kompass</h2></header>' +
@@ -942,9 +955,8 @@
     if (ex) t += needleText(ex) + "\n";
     t += "\nStrategiefelder (0 bis 10): " + FIELDS.map(function (f) { var s = score(f.k); return f.short + " " + (isRated(f.k) ? s : s === -1 ? "kein Einfluss" : "-"); }).join(", ") + "\n";
     t += "Frage für Montag (" + c.name + "): " + c.frage + "\n";
-    if (state.a1.trim()) t += "\nSituationen im Alltag: " + state.a1.trim();
-    if (state.a2.trim()) t += "\nDas merkt mein Team: " + state.a2.trim();
-    if (state.a3.trim()) t += "\nMein Impuls: " + state.a3.trim();
+    if (state.a1.trim()) t += "\nDas erleben meine Kolleg:innen: " + state.a1.trim();
+    if (state.a2.trim()) t += "\nDas will ich stärken: " + state.a2.trim();
     return t;
   }
   function copyText() {
