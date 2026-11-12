@@ -879,7 +879,7 @@
   function ownDef() { return state.coreText.trim(); }
   function posterSum(c) { return ownDef() ? "Für mich heißt " + c.name + ": " + ownDef() : "Du führst vor allem über " + c.name + ". " + c.bed; }
   function posterItems(c, others) {
-    var first = ownDef() ? [{ t: "Das heißt für dein Führen", x: c.bed }] : [];
+    var first = ownDef() ? [{ t: "Das heißt für deinen Führungsalltag", x: c.bed }] : [];
     return first.concat([{ t: "Deine Stärke", x: c.st }, { t: "Deine Stolperfalle", x: c.fall }]).concat(others.map(function (o) { return { t: BY[o].name, x: BY[o].bed }; }));
   }
   function summaryText() {
@@ -914,7 +914,7 @@
     var c = BY[state.core], others = state.picks.filter(function (p) { return p !== state.core; }), ex = extremes();
     function card(v, core) {
       return '<article class="vcard' + (core ? " core" : "") + '"><span class="tag">' + (core ? "Kernwert" : "Wert") + "</span><h3>" + esc(v.name) + "</h3>" +
-        '<dl class="' + (core ? "core-grid" : "") + '"><div><dt>Das heißt für dein Führen</dt><dd>' + esc(v.bed) + "</dd></div><div><dt>Deine Stärke</dt><dd>" + esc(v.st) +
+        '<dl class="' + (core ? "core-grid" : "") + '"><div><dt>Das heißt für deinen Führungsalltag</dt><dd>' + esc(v.bed) + "</dd></div><div><dt>Deine Stärke</dt><dd>" + esc(v.st) +
         "</dd></div><div><dt>Deine Stolperfalle</dt><dd>" + esc(v.fall) + "</dd></div><div><dt>Frage für Montag</dt><dd>" + esc(v.frage) + "</dd></div></dl></article>";
     }
     var cards = card(c, true) + others.map(function (p) { return card(BY[p], false); }).join("");
@@ -928,15 +928,487 @@
       '<p class="lead">' + esc(summaryText()) + "</p>" +
       compassSVG(state.core, others, ex) + vals +
       (ex ? '<p class="needle-text">' + esc(needleText(ex)) + "</p>" : "") +
+      '<div class="nav dlnav" id="dl" hidden><button class="btn" id="dlpdf"><span>Poster als PDF</span></button><button class="btn" id="dlpng"><span>Poster als Bild</span></button></div>' +
+      '<p class="status" id="status" aria-live="polite"></p>' +
+      '<details class="fold"' + (wide ? " open" : "") + "><summary>Dein Poster ansehen</summary>" + posterHTML(c, others, ex) + "</details>" +
+      '<details class="fold"' + (wide ? " open" : "") + "><summary>Was das für deinen Führungsalltag bedeutet</summary>" + '<div class="cards">' + cards + "</div></details>" +
+      '<section class="panel"><h3>Jetzt: Austausch mit deiner Sitznachbar:in</h3>' +
+      '<p>Stell dich jetzt kurz anhand deines Wertekompass deinem Sitznachbarn vor. Erkläre, was dein Kernwert und deine anderen Werte für dich bedeuten und wo sie sichtbar werden.</p></section>' +
+      '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Weiter</span></button></div>' +
+      "</div></div>";
+    document.getElementById("chips").addEventListener("click", function (e) {
+      var b = e.target.closest(".chip"); if (!b) return;
+      var v = b.getAttribute("data-v"), i = state.picks.indexOf(v), msg = document.getElementById("msg");
+      if (i >= 0) { state.picks.splice(i, 1); if (state.core === v) state.core = ""; msg.textContent = ""; }
+      else if (state.picks.length >= MAX) { msg.textContent = "Sechs sind das Maximum. Nimm erst einen Wert raus, wenn du einen anderen willst."; return; }
+      else { state.picks.push(v); msg.textContent = ""; }
+      save(); paintValues();
+    });
+    document.getElementById("back").addEventListener("click", function () { go(0); });
+    document.getElementById("next").addEventListener("click", function () { if (state.picks.length >= MIN) go(2); });
+    paintValues();
+  }
+  function paintValues() {
+    var n = state.picks.length, d = "";
+    for (var i = 0; i < MAX; i++) d += '<i class="' + (i < n ? "on" : "") + (i >= MIN ? " opt" : "") + '"></i>';
+    document.getElementById("dots").innerHTML = d;
+    document.getElementById("count").textContent = n === 0 ? "Noch keiner gewählt" : n + " von maximal " + MAX + " gewählt" + (n < MIN ? ", noch " + (MIN - n) + " mindestens" : "");
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"), function (b) {
+      var on = state.picks.indexOf(b.getAttribute("data-v")) >= 0;
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.classList.toggle("locked", !on && n >= MAX);
+    });
+    document.getElementById("next").disabled = n < MIN;
+  }
+
+  // ---- Schritt 2: Kernwert ----
+  function viewCore() {
+    var opts = state.picks.map(function (p) {
+      return '<button type="button" class="core-opt" data-c="' + esc(p) + '" aria-pressed="' + (state.core === p) + '"><strong>' + esc(p) + "</strong><span>" + esc(BY[p].bed) + "</span></button>";
+    }).join("");
+    app.innerHTML =
+      '<div class="step-in">' + progress() + '<div class="stack">' +
+      "<h2>Welcher Wert ist dein Kern?</h2>" +
+      '<p class="lead">Wenn du nur einen behalten dürftest, welcher wäre es? Das ist dein Kernwert.</p>' +
+      '<div class="core-list" id="coreList">' + opts + "</div>" +
+      '<label class="field" for="coreText">Was bedeutet dein Kernwert für dich, und woher kommt er? <small>Ein Satz in deinen Worten. Er kommt auf dein Poster.</small>' +
+      '<textarea id="coreText" maxlength="200" placeholder="Für mich heißt das …">' + esc(state.coreText) + "</textarea></label>" +
+      '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Weiter</span></button></div>' +
+      "</div></div>";
+    document.getElementById("coreList").addEventListener("click", function (e) {
+      var b = e.target.closest(".core-opt"); if (!b) return;
+      state.core = b.getAttribute("data-c"); save(); paintCore();
+    });
+    document.getElementById("coreText").addEventListener("input", function (e) { state.coreText = e.target.value; save(); });
+    document.getElementById("back").addEventListener("click", function () { go(1); });
+    document.getElementById("next").addEventListener("click", function () { if (state.core) go(3); });
+    paintCore();
+  }
+  function paintCore() {
+    Array.prototype.forEach.call(document.querySelectorAll(".core-opt"), function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-c") === state.core ? "true" : "false");
+    });
+    document.getElementById("next").disabled = !state.core;
+  }
+
+  // ---- Schritt 3: Die sechs HPSI Strategiefelder, Skala 0 bis 10 ----
+  function viewFields() {
+    var rows = FIELDS.map(function (f) {
+      return '<div class="frow" data-row="' + f.k + '"><div class="stack-xs"><h3>' + esc(f.name) + '</h3><p class="mute">' + esc(f.desc) + "</p></div>" +
+        '<div class="sl"><input type="range" class="range unset" min="0" max="10" step="1" value="0" data-f="' + f.k + '" aria-label="' + esc(f.name) + ', 0 bis 10"><output class="val" data-v="' + f.k + '">–</output></div>' +
+        '<div class="rates"><span class="ends">0 gar nicht, 10 voll und ganz</span><button type="button" class="skip" data-f="' + f.k + '" data-s="-1">Kein Einfluss</button></div></div>';
+    }).join("");
+    app.innerHTML =
+      '<div class="step-in">' + progress() + '<div class="stack">' +
+      "<h2>Wo lebst du deine Werte?</h2>" + pillsHTML() +
+      '<p class="lead">In welchem der sechs HPSI Strategiefelder kannst du deine Werte aktuell am meisten ausleben?</p>' +
+      '<p class="hint">Schieb den Regler von 0 bis 10. Wo du keinen Einfluss hast, tippe auf „Kein Einfluss“. Mindestens zwei Felder, damit dein Kompass eine Richtung bekommt.</p>' +
+      '<div class="frows" id="frows">' + rows + "</div>" +
+      '<p class="msg" id="fmsg" aria-live="polite"></p>' +
+      '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Weiter</span></button></div>' +
+      "</div></div>";
+    var box = document.getElementById("frows");
+    function setRange(el) { state.fields[el.getAttribute("data-f")] = parseInt(el.value, 10); save(); paintFields(); }
+    ["input", "change", "pointerup", "touchend", "keyup"].forEach(function (ev) {
+      box.addEventListener(ev, function (e) { var el = e.target.closest(".range"); if (el) setRange(el); });
+    });
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest(".skip"); if (!b) return;
+      var k = b.getAttribute("data-f");
+      if (state.fields[k] === -1) delete state.fields[k]; else state.fields[k] = -1;
+      save(); paintFields();
+    });
+    document.getElementById("back").addEventListener("click", function () { go(2); });
+    document.getElementById("next").addEventListener("click", function () { if (ratedCount() >= 2) go(4); });
+    paintFields();
+  }
+  function paintFields() {
+    FIELDS.forEach(function (f) {
+      var s = score(f.k), row = document.querySelector('[data-row="' + f.k + '"]');
+      var r = row.querySelector(".range"), o = row.querySelector(".val"), sk = row.querySelector(".skip");
+      r.classList.toggle("unset", !isRated(f.k));
+      r.classList.toggle("off", s === -1);
+      if (isRated(f.k)) r.value = String(s);
+      r.style.setProperty("--p", (isRated(f.k) ? s * 10 : 0) + "%");
+      o.textContent = isRated(f.k) ? String(s) : "–";
+      sk.classList.toggle("on", s === -1); sk.setAttribute("aria-pressed", s === -1 ? "true" : "false");
+    });
+    var n = ratedCount();
+    document.getElementById("fmsg").textContent = n >= 2 ? "" : "Bewerte mindestens zwei Felder, damit dein Kompass eine Richtung bekommt.";
+    document.getElementById("next").disabled = n < 2;
+  }
+  function pillsHTML() {
+    return '<div class="pills">' + state.picks.map(function (p) { return '<span class="pill' + (p === state.core ? " core" : "") + '">' + esc(p) + "</span>"; }).join("") + "</div>";
+  }
+  function footBlocks(c) {
+    var b = [];
+    if (state.a1.trim()) b.push({ k: "Das erleben meine Kolleg:innen", t: state.a1.trim() });
+    if (state.a2.trim()) b.push({ k: "Das will ich stärken", t: state.a2.trim() });
+    if (!b.length) b.push({ k: "Frage für Montag", t: c.frage });
+    return b;
+  }
+  function viewQuestions() {
+    app.innerHTML =
+      '<div class="step-in">' + progress() + '<div class="stack">' +
+      "<h2>Dein Impuls</h2>" + pillsHTML() +
+      '<p class="lead">Zwei kurze Sätze reichen. Beides ist optional und kommt auf dein Poster.</p>' +
+      '<label class="field" for="a1">Meine Kolleg:innen würden eine Situation beschreiben, in der mein Kernwert ' + esc(state.core) + ' spürbar wird. <small>Zum Beispiel: Wenn …</small><textarea id="a1" maxlength="200" placeholder="Wenn …">' + esc(state.a1) + "</textarea></label>" +
+      '<label class="field" for="a2">Diese Stärken möchte ich auf Basis meiner Werte noch stärker zum Ausdruck bringen. <small>Ein, zwei Stichworte oder ein Satz.</small><textarea id="a2" maxlength="200" placeholder="Ich möchte …">' + esc(state.a2) + "</textarea></label>" +
+      '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn" id="next"><span>Kompass erstellen</span></button></div>' +
+      "</div></div>";
+    document.getElementById("a1").addEventListener("input", function (e) { state.a1 = e.target.value; save(); });
+    document.getElementById("a2").addEventListener("input", function (e) { state.a2 = e.target.value; save(); });
+    document.getElementById("back").addEventListener("click", function () { go(3); });
+    document.getElementById("next").addEventListener("click", function () { go(5); });
+  }
+
+  // ---- Schritt 5: Ergebnis ----
+  function extremes() {
+    var rated = FIELDS.filter(function (f) { return isRated(f.k); });
+    if (rated.length < 2) return null;
+    var hi = rated[0], lo = rated[0];
+    rated.forEach(function (f) { if (score(f.k) > score(hi.k)) hi = f; });
+    rated.forEach(function (f) { if (score(f.k) < score(lo.k)) lo = f; });
+    if (score(hi.k) === score(lo.k)) return { even: true };
+    return { hi: hi, lo: lo };
+  }
+  function polar(cx, cy, r, deg) { var a = deg * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
+  function wedge(cx, cy, r0, r1, a0, a1) {
+    var p0 = polar(cx, cy, r1, a0), p1 = polar(cx, cy, r1, a1), p2 = polar(cx, cy, r0, a1), p3 = polar(cx, cy, r0, a0);
+    function f(p) { return p[0].toFixed(1) + " " + p[1].toFixed(1); }
+    return "M " + f(p0) + " A " + r1 + " " + r1 + " 0 0 1 " + f(p1) + " L " + f(p2) + " A " + r0 + " " + r0 + " 0 0 0 " + f(p3) + " Z";
+  }
+  // Kompass als Datenmodell: eine Quelle für die Bildschirmgrafik und den Export
+  function compassModel(core, others, ex) {
+    var cx = 400, cy = 320, R = 236, hubR = 132, r0 = 140, step = (R - 8 - r0) / 5;
+    var m = { vb: [-20, 0, 840, 640], cx: cx, cy: cy, R: R, r0: r0, hubR: hubR, rings: [], ticks: [], wedges: [], labels: [], needle: null };
+    var i, d;
+    for (i = 1; i <= 5; i++) m.rings.push(r0 + step * i);
+    for (d = 0; d < 360; d += 5) {
+      var len = d % 90 === 0 ? 20 : d % 30 === 0 ? 13 : 7, a = polar(cx, cy, R, d - 90), b = polar(cx, cy, R + len, d - 90);
+      m.ticks.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], big: d % 30 === 0 });
+    }
+    FIELDS.forEach(function (f, idx) {
+      var c = -90 + 60 * idx, s = score(f.k), top = !!(ex && ex.hi && ex.hi.k === f.k);
+      m.wedges.push({ a0: c - 27, a1: c + 27, r0: r0, r1: isRated(f.k) ? Math.max(r0 + 3, r0 + step * s / 2) : r0 + step * 5, cls: isRated(f.k) ? (top ? "top" : "") : "off" });
+      var cos = Math.cos(c * Math.PI / 180), mid = Math.abs(cos) < 0.1, lp = polar(cx, cy, R + 40, c);
+      m.labels.push({ x: lp[0], y: lp[1] + (mid ? (lp[1] < cy ? -8 : 24) : 9), anchor: mid ? "middle" : cos > 0 ? "start" : "end", text: f.short, top: top, off: !isRated(f.k) });
+    });
+    if (ex && ex.hi) {
+      var ang = -90 + 60 * FIELDS.indexOf(ex.hi), u = polar(0, 0, 1, ang), p = [-u[1], u[0]];
+      var bs = [cx + u[0] * (R - 2), cy + u[1] * (R - 2)], tip = [cx + u[0] * (R + 24), cy + u[1] * (R + 24)];
+      m.needle = { x1: cx + u[0] * (hubR - 6), y1: cy + u[1] * (hubR - 6), x2: bs[0], y2: bs[1], head: [tip, [bs[0] + p[0] * 10, bs[1] + p[1] * 10], [bs[0] - p[0] * 10, bs[1] - p[1] * 10]] };
+    }
+    var n = core.length, longest = 0;
+    others.forEach(function (o) { if (o.length > longest) longest = o.length; });
+    var valFs = longest > 14 ? 21 : 24, lh = valFs + 5, blockH = 92 + others.length * lh, y0 = cy - blockH / 2;
+    m.hub = {
+      labelY: y0 + 10, nameY: y0 + 42, ruleY: y0 + 66, name: n <= 11 ? core.toUpperCase() : core,
+      fs: n <= 8 ? 32 : n <= 11 ? 26 : n <= 14 ? 21 : 17, valFs: valFs,
+      vals: others.map(function (o, k) { return { text: o, y: y0 + 92 + k * lh }; })
+    };
+    m.aria = "Dein Führungskompass mit Kernwert " + core + (others.length ? " und den Werten " + others.join(", ") : "") + ". " +
+      FIELDS.map(function (f) { var s = score(f.k); return f.short + ": " + (isRated(f.k) ? s + " von 10" : s === -1 ? "kein Einfluss" : "nicht bewertet"); }).join(", ");
+    return m;
+  }
+  function compassSVG(core, others, ex) {
+    var m = compassModel(core, others, ex), s = "";
+    function f1(v) { return v.toFixed(1); }
+    m.rings.forEach(function (r) { s += '<circle class="gring" cx="' + m.cx + '" cy="' + m.cy + '" r="' + f1(r) + '"/>'; });
+    m.ticks.forEach(function (t) { s += '<line class="tick' + (t.big ? " big" : "") + '" x1="' + f1(t.x1) + '" y1="' + f1(t.y1) + '" x2="' + f1(t.x2) + '" y2="' + f1(t.y2) + '"/>'; });
+    s += '<circle class="rim" cx="' + m.cx + '" cy="' + m.cy + '" r="' + m.R + '"/>';
+    m.wedges.forEach(function (w) { s += '<path class="wedge' + (w.cls ? " " + w.cls : "") + '" d="' + wedge(m.cx, m.cy, w.r0, w.r1, w.a0, w.a1) + '"/>'; });
+    m.labels.forEach(function (l) {
+      s += '<text class="flabel' + (l.top ? " top" : "") + (l.off ? " off" : "") + '" x="' + f1(l.x) + '" y="' + f1(l.y) + '" text-anchor="' + l.anchor + '">' + esc(l.text) + "</text>";
+    });
+    if (m.needle) {
+      var nd = m.needle;
+      s += '<line class="needle" x1="' + f1(nd.x1) + '" y1="' + f1(nd.y1) + '" x2="' + f1(nd.x2) + '" y2="' + f1(nd.y2) + '"/>';
+      s += '<polygon class="needle-head" points="' + nd.head.map(function (q) { return f1(q[0]) + "," + f1(q[1]); }).join(" ") + '"/>';
+    }
+    var h = m.hub;
+    s += '<circle class="core-shape" cx="' + m.cx + '" cy="' + m.cy + '" r="' + m.hubR + '"/>' +
+      '<text class="core-label" x="' + m.cx + '" y="' + f1(h.labelY) + '">KERNWERT</text>' +
+      '<text class="core-text" x="' + m.cx + '" y="' + f1(h.nameY) + '" style="font-size:' + h.fs + 'px">' + esc(h.name) + "</text>" +
+      '<line class="hub-rule" x1="' + (m.cx - 52) + '" y1="' + f1(h.ruleY) + '" x2="' + (m.cx + 52) + '" y2="' + f1(h.ruleY) + '"/>';
+    h.vals.forEach(function (v) { s += '<text class="hub-val" x="' + m.cx + '" y="' + f1(v.y) + '" style="font-size:' + h.valFs + 'px">' + esc(v.text) + "</text>"; });
+    return '<svg class="compass" viewBox="' + m.vb.join(" ") + '" role="img" aria-label="' + esc(m.aria) + '">' + s + "</svg>";
+  }
+
+  // ---- Export als Bild und PDF ----
+  var HEADF = '"Barlow Condensed", "Arial Narrow", Arial, sans-serif';
+  var BODYF = '"Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif';
+  var INK = "#000000", PAPER = "#ffffff", MUTE = "#666666", L1 = "rgba(0,0,0,0.16)", L2 = "rgba(0,0,0,0.38)";
+  function fontsReady() {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    var specs = ['600 20px "Barlow Condensed"', '700 20px "Barlow Condensed"', 'italic 700 20px "Barlow Condensed"', 'italic 900 20px "Barlow Condensed"',
+      '400 20px "Barlow Semi Condensed"', '500 20px "Barlow Semi Condensed"', '600 20px "Barlow Semi Condensed"'];
+    return Promise.all(specs.map(function (s) { return document.fonts.load(s, "Aä"); })).catch(function () {});
+  }
+  function spaced(ctx, text, x, y, sp, align) {
+    var ws = [], w = 0, i;
+    for (i = 0; i < text.length; i++) { ws.push(ctx.measureText(text.charAt(i)).width); w += ws[i] + (i < text.length - 1 ? sp : 0); }
+    var px = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+    ctx.textAlign = "left";
+    for (i = 0; i < text.length; i++) { ctx.fillText(text.charAt(i), px, y); px += ws[i] + sp; }
+    return w;
+  }
+  function wrapLines(ctx, text, maxW) {
+    var words = String(text).replace(/\s+/g, " ").trim().split(" "), lines = [], cur = "";
+    words.forEach(function (w) {
+      var t = cur ? cur + " " + w : w;
+      if (!cur || ctx.measureText(t).width <= maxW) cur = t; else { lines.push(cur); cur = w; }
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  function pathRound(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arc(x + w - r, y + r, r, -Math.PI / 2, 0);
+    ctx.lineTo(x + w, y + h - r); ctx.arc(x + w - r, y + h - r, r, 0, Math.PI / 2); ctx.lineTo(x + r, y + h);
+    ctx.arc(x + r, y + h - r, r, Math.PI / 2, Math.PI); ctx.lineTo(x, y + r); ctx.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5); ctx.closePath();
+  }
+  function drawCompass(ctx, m, X, Y, k) {
+    var rad = Math.PI / 180;
+    ctx.save(); ctx.translate(X - m.vb[0] * k, Y - m.vb[1] * k); ctx.scale(k, k);
+    ctx.lineWidth = 1; ctx.strokeStyle = L1;
+    m.rings.forEach(function (r) { ctx.beginPath(); ctx.arc(m.cx, m.cy, r, 0, Math.PI * 2); ctx.stroke(); });
+    m.ticks.forEach(function (t) {
+      ctx.globalAlpha = t.big ? 1 : 0.55; ctx.strokeStyle = INK; ctx.lineWidth = t.big ? 2 : 1;
+      ctx.beginPath(); ctx.moveTo(t.x1, t.y1); ctx.lineTo(t.x2, t.y2); ctx.stroke();
+    });
+    ctx.globalAlpha = 1; ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(m.cx, m.cy, m.R, 0, Math.PI * 2); ctx.stroke();
+    m.wedges.forEach(function (w) {
+      ctx.beginPath(); ctx.arc(m.cx, m.cy, w.r1, w.a0 * rad, w.a1 * rad, false); ctx.arc(m.cx, m.cy, w.r0, w.a1 * rad, w.a0 * rad, true); ctx.closePath();
+      if (w.cls === "off") { ctx.setLineDash([4, 5]); ctx.strokeStyle = L2; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]); }
+      else { ctx.globalAlpha = w.cls === "top" ? 0.34 : 0.12; ctx.fillStyle = INK; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = INK; ctx.lineWidth = w.cls === "top" ? 3 : 2; ctx.stroke(); }
+    });
+    ctx.textBaseline = "alphabetic";
+    m.labels.forEach(function (l) {
+      ctx.font = (l.top ? "italic 900 " : "700 ") + "28px " + HEADF; ctx.fillStyle = l.off ? MUTE : INK; ctx.textAlign = l.anchor === "middle" ? "center" : l.anchor === "start" ? "left" : "right";
+      ctx.fillText(l.text, l.x, l.y);
+    });
+    if (m.needle) {
+      var nd = m.needle;
+      ctx.strokeStyle = INK; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(nd.x1, nd.y1); ctx.lineTo(nd.x2, nd.y2); ctx.stroke();
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(nd.head[0][0], nd.head[0][1]); ctx.lineTo(nd.head[1][0], nd.head[1][1]); ctx.lineTo(nd.head[2][0], nd.head[2][1]); ctx.closePath(); ctx.fill();
+    }
+    var h = m.hub;
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(m.cx, m.cy, m.hubR, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = PAPER; ctx.globalAlpha = 0.8; ctx.font = "700 12px " + HEADF; spaced(ctx, "KERNWERT", m.cx, h.labelY + 4, 2.2, "center"); ctx.globalAlpha = 1;
+    ctx.font = "italic 900 " + h.fs + "px " + HEADF; ctx.textAlign = "center"; ctx.fillText(h.name, m.cx, h.nameY + h.fs * 0.34);
+    ctx.globalAlpha = 0.5; ctx.strokeStyle = PAPER; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(m.cx - 52, h.ruleY); ctx.lineTo(m.cx + 52, h.ruleY); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.font = "600 " + h.valFs + "px " + HEADF; ctx.textAlign = "center";
+    h.vals.forEach(function (v) { ctx.fillText(v.text, m.cx, v.y + h.valFs * 0.34); });
+    ctx.restore();
+  }
+  function makePosterCanvas() {
+    return fontsReady().then(loadLogo).then(function () {
+      var c = BY[state.core], others = state.picks.filter(function (p) { return p !== state.core; }), ex = extremes();
+      var W = 2480, H = 3508, u = W / 100, pad = 5 * u, iw = W - 2 * pad, colW = (iw - 4 * u) / 2;
+      var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      var ctx = cv.getContext("2d");
+      ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H); ctx.textBaseline = "alphabetic";
+      function F(style, weight, size, fam) { return style + " " + weight + " " + size + "px " + fam; }
+
+      // Abschnitt 1: Kopf
+      var LH = 14 * u * 168.66 / 444.12, hdrH = 13.4 * u - 1.6 * u + LH;
+      // Abschnitt 3: Satz zum Kernwert
+      var sumFont = F("italic", 700, 2.9 * u, HEADF); ctx.font = sumFont;
+      var sumLines = wrapLines(ctx, posterSum(c), iw), sumLH = 2.9 * u * 1.15, sumH = sumLines.length * sumLH;
+      // Abschnitt 4: Kernwert und weitere Werte
+      var items = posterItems(c, others);
+      var cells = items.map(function (it) {
+        ctx.font = F("italic", 900, 2.2 * u, HEADF);
+        var nameLines = wrapLines(ctx, it.t.toUpperCase(), colW), nameH = nameLines.length * 2.2 * u * 1.05;
+        ctx.font = F("normal", 400, 2.1 * u, BODYF);
+        var qLines = wrapLines(ctx, it.x, colW), qH = qLines.length * 2.1 * u * 1.22;
+        return { nameLines: nameLines, nameH: nameH, qLines: qLines, qH: qH, h: 0.3 * u + 1.1 * u + nameH + 0.7 * u + qH };
+      });
+      var nRows = Math.ceil(cells.length / 2);
+      var rowH = [];
+      for (var rr = 0; rr < nRows; rr++) rowH.push(Math.max(cells[2 * rr].h, cells[2 * rr + 1] ? cells[2 * rr + 1].h : 0));
+      var gridH = rowH.reduce(function (a, b) { return a + b; }, 0) + (nRows - 1) * 2.2 * u;
+      // Abschnitt 5: Fuß
+      var w1 = (iw - 4 * u) * 1.1 / 2.1, w2 = (iw - 4 * u) / 2.1;
+      var fb = footBlocks(c), maxL = fb.length > 1 ? 3 : 5;
+      ctx.font = F("normal", 400, 2.2 * u, BODYF);
+      fb.forEach(function (b) {
+        b.l = wrapLines(ctx, b.t, w1);
+        if (b.l.length > maxL) { b.l = b.l.slice(0, maxL); b.l[maxL - 1] = b.l[maxL - 1].replace(/\s*\S*$/, "") + " …"; }
+      });
+      ctx.font = F("italic", 700, 2.6 * u, HEADF);
+      var ql = wrapLines(ctx, "„Nur wer sich selbst kennt, kann andere führen.“", w2);
+      var leftH = fb.reduce(function (a, b) { return a + 1.9 * u * 1.2 + 0.4 * u + b.l.length * 2.2 * u * 1.25; }, 0) + (fb.length - 1) * 1.4 * u, rightH = ql.length * 2.6 * u * 1.1 + 1 * u + 1.8 * u * 1.2;
+      var footH = 0.5 * u + 2 * u + Math.max(leftH, rightH);
+      // Abschnitt 2: Kompass nimmt den Platz, der übrig ist
+      var gMin = 1.8 * u, kMax = 0.8 * iw / 840, availC = H - 2 * pad - hdrH - sumH - gridH - footH - 4 * gMin;
+      var ch = Math.min(640 * kMax, availC), k = ch / 640, cw = 840 * k;
+      var gap = (H - 2 * pad - hdrH - ch - sumH - gridH - footH) / 4;
+
+      var y = pad;
+      // Kopf
+      if (logoImg) ctx.drawImage(logoImg, pad, y, 14 * u, LH);
+      ctx.font = F("normal", 700, 2.1 * u, HEADF); ctx.fillStyle = MUTE; spaced(ctx, "HPSI · SPORTGEIST 2026", pad, y + LH + 0.8 * u + 2.3 * u, 0.14 * 2.1 * u, "left");
+      if (state.name.trim()) { ctx.font = F("italic", 700, 3 * u, HEADF); ctx.fillStyle = INK; ctx.textAlign = "right"; ctx.fillText("von " + state.name.trim(), W - pad, y + LH + 0.8 * u + 2.3 * u); }
+      ctx.font = F("italic", 900, 7 * u, HEADF); ctx.fillStyle = INK; ctx.textAlign = "left"; ctx.fillText("FÜHRUNGSKOMPASS", pad, y + hdrH - 0.8 * u);
+      y += hdrH + gap;
+      // Kompass
+      drawCompass(ctx, compassModel(state.core, others, ex), (W - cw) / 2, y, k);
+      y += ch + gap;
+      // Satz
+      ctx.font = sumFont; ctx.fillStyle = INK; ctx.textAlign = "left";
+      sumLines.forEach(function (ln, i) { ctx.fillText(ln, pad, y + sumLH * i + 2.9 * u * 0.9); });
+      y += sumH + gap;
+      // Kernwert und weitere Werte
+      rowH.forEach(function (rh, r) {
+        [0, 1].forEach(function (cI) {
+          var cell = cells[2 * r + cI]; if (!cell) return;
+          var x = pad + cI * (colW + 4 * u), cy = y;
+          ctx.fillStyle = INK; ctx.fillRect(x, cy, colW, 0.3 * u); cy += 0.3 * u + 1.1 * u;
+          ctx.font = F("italic", 900, 2.2 * u, HEADF); ctx.textAlign = "left";
+          cell.nameLines.forEach(function (ln, i) { ctx.fillText(ln, x, cy + 2.2 * u * 1.05 * i + 2.2 * u * 0.85); });
+          cy += cell.nameH + 0.7 * u;
+          ctx.font = F("normal", 400, 2.1 * u, BODYF); ctx.fillStyle = INK;
+          cell.qLines.forEach(function (ln, i) { ctx.fillText(ln, x, cy + 2.1 * u * 1.22 * i + 2.1 * u * 0.95); });
+        });
+        y += rh + (r < rowH.length - 1 ? 2.2 * u : 0);
+      });
+      y += gap;
+      // Fuß
+      ctx.fillStyle = INK; ctx.fillRect(pad, y, iw, 0.5 * u); var fy = y + 0.5 * u + 2 * u;
+      var fyy = fy;
+      fb.forEach(function (b) {
+        ctx.font = F("normal", 700, 1.9 * u, HEADF); ctx.fillStyle = MUTE; spaced(ctx, b.k.toUpperCase(), pad, fyy + 1.9 * u * 0.9, 0.14 * 1.9 * u, "left");
+        ctx.font = F("normal", 400, 2.2 * u, BODYF); ctx.fillStyle = INK; ctx.textAlign = "left";
+        b.l.forEach(function (ln, i) { ctx.fillText(ln, pad, fyy + 1.9 * u * 1.2 + 0.4 * u + 2.2 * u * 1.25 * i + 2.2 * u * 0.95); });
+        fyy += 1.9 * u * 1.2 + 0.4 * u + b.l.length * 2.2 * u * 1.25 + 1.4 * u;
+      });
+      var qx = pad + w1 + 4 * u;
+      ctx.font = F("italic", 700, 2.6 * u, HEADF); ctx.fillStyle = INK; ctx.textAlign = "left";
+      ql.forEach(function (ln, i) { ctx.fillText(ln, qx, fy + 2.6 * u * 1.1 * i + 2.6 * u * 0.9); });
+      ctx.font = F("normal", 600, 1.8 * u, HEADF); ctx.fillStyle = MUTE; spaced(ctx, "BERNHARD PETERS", qx, fy + ql.length * 2.6 * u * 1.1 + 1 * u + 1.8 * u * 0.9, 0.12 * 1.8 * u, "left");
+      return cv;
+    });
+  }
+  function canvasBlob(cv, type, q) {
+    return new Promise(function (res, rej) { cv.toBlob(function (b) { b ? res(b) : rej(new Error("blob")); }, type, q); });
+  }
+  function blobBytes(b) {
+    return new Promise(function (res, rej) { var r = new FileReader(); r.onload = function () { res(new Uint8Array(r.result)); }; r.onerror = rej; r.readAsArrayBuffer(b); });
+  }
+  // Einseitiges A4-PDF mit dem Poster als JPEG
+  function jpegToPdf(jpg, w, h) {
+    var enc = new TextEncoder(), chunks = [], len = 0, offs = [];
+    function add(x) { var b = typeof x === "string" ? enc.encode(x) : x; chunks.push(b); len += b.length; }
+    function pad10(n) { var s = String(n); while (s.length < 10) s = "0" + s; return s; }
+    var content = "q 595.28 0 0 841.89 0 0 cm /Im0 Do Q";
+    add("%PDF-1.4\n");
+    offs[1] = len; add("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    offs[2] = len; add("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+    offs[3] = len; add("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n");
+    offs[4] = len; add("4 0 obj\n<< /Type /XObject /Subtype /Image /Width " + w + " /Height " + h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + jpg.length + " >>\nstream\n");
+    add(jpg); add("\nendstream\nendobj\n");
+    offs[5] = len; add("5 0 obj\n<< /Length " + content.length + " >>\nstream\n" + content + "\nendstream\nendobj\n");
+    var xref = len;
+    add("xref\n0 6\n0000000000 65535 f \n");
+    for (var i = 1; i <= 5; i++) add(pad10(offs[i]) + " 00000 n \n");
+    add("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+    var out = new Uint8Array(len), p = 0;
+    chunks.forEach(function (c) { out.set(c, p); p += c.length; });
+    return out;
+  }
+  var dl = null;
+  function plainSave(r) {
+    var type = /\.pdf$/i.test(r.filename) ? "application/pdf" : "image/png";
+    var blob = r.data instanceof Blob ? r.data : new Blob([r.data], { type: type });
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = r.filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    return Promise.resolve({ status: "saved" });
+  }
+  if (window.__HPSI_STANDALONE) dl = { save: plainSave };
+  else try {
+    if (window.claude && window.claude.use) window.claude.use("downloads").then(function (d) {
+      dl = d; var el = document.getElementById("dl"); if (d && el) el.hidden = false;
+    }, function () {});
+  } catch (e) {}
+  function fileBase() {
+    var n = state.name.trim().replace(/[^A-Za-z0-9ÄÖÜäöüß]+/g, "-").replace(/^-+|-+$/g, "");
+    return "Fuehrungskompass" + (n ? "-" + n : "");
+  }
+  function exportPoster(kind) {
+    var st = document.getElementById("status");
+    if (!dl) { st.textContent = "Speichern geht hier nicht. Mach stattdessen einen Screenshot."; return; }
+    st.textContent = "Poster wird erstellt …";
+    makePosterCanvas().then(function (cv) {
+      if (kind === "png") return canvasBlob(cv, "image/png").then(function (b) { return dl.save({ filename: fileBase() + ".png", data: b }); });
+      return canvasBlob(cv, "image/jpeg", 0.92).then(blobBytes).then(function (bytes) { return dl.save({ filename: fileBase() + ".pdf", data: jpegToPdf(bytes, cv.width, cv.height) }); });
+    }).then(function () { st.textContent = "Gespeichert."; }, function (err) {
+      st.textContent = err && err.code === "declined" ? "Abgebrochen." : "Speichern hat nicht geklappt. Mach stattdessen einen Screenshot.";
+    });
+  }
+  function ownDef() { return state.coreText.trim(); }
+  function posterSum(c) { return ownDef() ? "Für mich heißt " + c.name + ": " + ownDef() : "Du führst vor allem über " + c.name + ". " + c.bed; }
+  function posterItems(c, others) {
+    var first = ownDef() ? [{ t: "Das heißt für deinen Führungsalltag", x: c.bed }] : [];
+    return first.concat([{ t: "Deine Stärke", x: c.st }, { t: "Deine Stolperfalle", x: c.fall }]).concat(others.map(function (o) { return { t: BY[o].name, x: BY[o].bed }; }));
+  }
+  function summaryText() {
+    var c = BY[state.core], others = state.picks.filter(function (p) { return p !== state.core; });
+    return "Du führst vor allem über " + c.name + ". " + c.bed + (others.length ? " Getragen wird das von " + join(others) + "." : "");
+  }
+  function needleText(ex) {
+    var c = BY[state.core].name;
+    if (!ex) return "";
+    if (ex.even) return "Du schätzt alle bewerteten Felder gleich stark ein. Spannend wird die Frage, in welchem Feld du " + c + " trotzdem noch mehr leben könntest.";
+    return "Deine Nadel zeigt auf " + ex.hi.name + ". Hier lebst du " + c + " aktuell am stärksten (" + score(ex.hi.k) + " von 10). Den größten Spielraum siehst du bei " + ex.lo.name + " (" + score(ex.lo.k) + " von 10).";
+  }
+  function dotsHTML(s) {
+    var h = '<span class="sdots" role="img" aria-label="' + s + ' von 10">';
+    for (var i = 1; i <= 10; i++) h += "<i" + (i <= s ? ' class="on"' : "") + "></i>";
+    return h + '<b class="snum">' + s + "</b></span>";
+  }
+  function posterHTML(c, others, ex) {
+    var items = posterItems(c, others);
+    var cells = items.map(function (it) { return '<div class="pcell"><strong>' + esc(it.t) + "</strong><p>" + esc(it.x) + "</p></div>"; }).join("");
+    var foot = footBlocks(c).map(function (b) { return '<p class="pfoot-k">' + esc(b.k) + '</p><p class="pfoot-t">' + esc(b.t) + "</p>"; }).join("");
+    return '<div class="sheet"><div class="poster">' +
+      '<header class="phd"><img class="plogo" src="' + LOGO_POS + '" alt="HPSI"><div class="prow"><p class="peyebrow">HPSI · Sportgeist 2026</p>' +
+      (state.name.trim() ? '<p class="pname">von ' + esc(state.name.trim()) + "</p>" : "") + '</div><h2 class="ptitle">Führungs&shy;kompass</h2></header>' +
+      compassSVG(state.core, others, ex) +
+      '<p class="psum">' + esc(posterSum(c)) + "</p>" +
+      '<div class="pgrid">' + cells + "</div>" +
+      '<footer class="pfoot"><div>' + foot + '</div><blockquote class="pq"><p>„Nur wer sich selbst kennt, kann andere führen.“</p><cite>Bernhard Peters</cite></blockquote></footer>' +
+      "</div></div>";
+  }
+  function viewResult() {
+    var c = BY[state.core], others = state.picks.filter(function (p) { return p !== state.core; }), ex = extremes();
+    function card(v, core) {
+      return '<article class="vcard' + (core ? " core" : "") + '"><span class="tag">' + (core ? "Kernwert" : "Wert") + "</span><h3>" + esc(v.name) + "</h3>" +
+        '<dl class="' + (core ? "core-grid" : "") + '"><div><dt>Das heißt für deinen Führungsalltag</dt><dd>' + esc(v.bed) + "</dd></div><div><dt>Deine Stärke</dt><dd>" + esc(v.st) +
+        "</dd></div><div><dt>Deine Stolperfalle</dt><dd>" + esc(v.fall) + "</dd></div><div><dt>Frage für Montag</dt><dd>" + esc(v.frage) + "</dd></div></dl></article>";
+    }
+    var cards = card(c, true) + others.map(function (p) { return card(BY[p], false); }).join("");
+    var q2 = ex && ex.hi ? "Wo liegt dein Kraftfeld und wo dein größter Spielraum? Und wie sieht das bei deinem Gegenüber aus?" : "In welchem Feld lebst du deine Werte am stärksten und in welchem am wenigsten? Und bei deinem Gegenüber?";
+    var vals = '<div class="valrow"><span class="pill core">' + esc(c.name) + "</span>" + others.map(function (o) { return '<span class="pill">' + esc(o) + "</span>"; }).join("") + "</div>";
+    var wide = window.innerWidth >= 760;
+
+    app.innerHTML =
+      '<div class="step-in">' + progress() + '<div class="stack">' +
+      "<h2>Dein Führungskompass</h2>" +
+      '<p class="lead">' + esc(summaryText()) + "</p>" +
+      compassSVG(state.core, others, ex) + vals +
+      (ex ? '<p class="needle-text">' + esc(needleText(ex)) + "</p>" : "") +
+      '<div class="nav dlnav" id="dl" hidden><button class="btn" id="dlpdf"><span>Poster als PDF</span></button><button class="btn" id="dlpng"><span>Poster als Bild</span></button></div>' +
+      '<p class="status" id="status" aria-live="polite"></p>' +
+      '<details class="fold"' + (wide ? " open" : "") + "><summary>Dein Poster ansehen</summary>" + posterHTML(c, others, ex) + "</details>" +
+      '<details class="fold"' + (wide ? " open" : "") + "><summary>Was das für deinen Führungsalltag bedeutet</summary>" + '<div class="cards">' + cards + "</div></details>" +
       '<section class="panel"><h3>Jetzt: Austausch mit deiner Sitznachbar:in</h3><ol>' +
       "<li>Wo erlebt man " + esc(c.name) + " bei dir im Arbeitsalltag, und wo fehlt es noch?</li>" +
       "<li>" + esc(q2) + "</li>" +
       "<li>Wie würde " + esc(c.name) + " in deiner Sportart oder Organisation anders aussehen als bei deinem Gegenüber?</li></ol>" +
       '<p class="hint">Stellt euch gegenseitig euren Kompass vor. Mehr braucht es nicht.</p></section>' +
-      '<div class="nav dlnav" id="dl" hidden><button class="btn" id="dlpdf"><span>Poster als PDF</span></button><button class="btn" id="dlpng"><span>Poster als Bild</span></button></div>' +
-      '<p class="status" id="status" aria-live="polite"></p>' +
-      '<details class="fold"' + (wide ? " open" : "") + "><summary>Dein Poster ansehen</summary>" + posterHTML(c, others, ex) + "</details>" +
-      '<details class="fold"' + (wide ? " open" : "") + "><summary>Was das für dein Führen heißt</summary>" + '<div class="cards">' + cards + "</div></details>" +
       '<div class="nav"><button class="btn ghost" id="back"><span>Zurück</span></button><button class="btn ghost" id="copy"><span>Text kopieren</span></button><button class="btn ghost" id="again"><span>Neu starten</span></button></div>' +
       "</div></div>";
     document.getElementById("back").addEventListener("click", function () { go(4); });
